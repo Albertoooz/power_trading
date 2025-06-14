@@ -2,7 +2,7 @@
 name = "power_trading"
 version = "0.1.0"
 description = "Backtrader + ML"
-requires-python = ">=3.12,<4.0"  # ✅ Dodaj górny limit!
+requires-python = ">=3.13,<4.0"  # ✅ Dodaj górny limit!
 license = { file = "LICENSE" }
 authors = [
   { name = "Albert Zagrajek" },
