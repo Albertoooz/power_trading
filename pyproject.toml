@@ -1,0 +1,78 @@
+[project]
+name = "power_trading"
+version = "0.1.0"
+description = "Backtrader + ML"
+requires-python = ">=3.12,<4.0"  # ✅ Dodaj górny limit!
+license = { file = "LICENSE" }
+authors = [
+  { name = "Albert Zagrajek" },
+]
+packages = [
+  { include = "power_trading", from = "src" }
+]
+
+readme = { file = "README.md", content-type = "text/markdown" }
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+  "pytest>=8.4.0",
+  "pytest-cov>=6.0.0",
+  "mypy>=1.16.0",
+  "bandit>=1.8.3",
+  "docformatter>=1.7.5",
+  "ruff>=0.4.7"
+]
+
+[tool.pytest.ini_options]
+addopts = "-vvv"
+testpaths = ["tests"]
+
+[tool.ruff]
+# Główne ustawienia Ruffa
+target-version = "py312"
+line-length = 90
+src = ["src", "tests"]
+extend-exclude = ["__pycache__", "build", "dist"]
+
+[tool.ruff.lint]
+# Reguły lintingu — zostawiłem Twoje bogate reguły
+extend-select = [
+  "E",  # pycodestyle
+  "F",  # pyflakes
+  "W",  # warnings
+  "I",  # isort
+  "UP", # pyupgrade
+]
+
+# Ignoruj S101 (asserts) w testach
+per-file-ignores = { "tests/*.py" = ["S101"] }
+
+[tool.ruff.format]
+# Używaj Ruffa do formatowania kodu jak Black + isort
+quote-style = "double"
+docstring-code-format = true
+
+[tool.mypy]
+files = ["src", "tests"]
+strict = true
+
+[tool.poetry.dependencies]
+backtrader = "^1.9.78.123"
+pandas = "^2.3.0"
+numpy = "^2.3.0"
+matplotlib = "^3.10.3"
+scikit-learn = "^1.7.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.4.0"
+pytest-cov = "^6.0.0"
+ruff = "^0.4.7"
+mypy = "^1.16.0"
+bandit = "^1.8.3"
+docformatter = "^1.7.5"
+pre-commit = "^4.2.0"

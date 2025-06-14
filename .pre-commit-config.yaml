@@ -1,0 +1,42 @@
+default_language_version:
+  python: python3.11
+
+repos:
+  # Ruff: lint + format
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: "v0.4.7"
+    hooks:
+      - id: ruff
+      - id: ruff-format
+
+  # mypy: type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.15.0
+    hooks:
+      - id: mypy
+
+  # docformatter: docstrings
+  - repo: https://github.com/pycqa/docformatter
+    rev: 06907d0267368b49b9180eed423fae5697c1e909
+    hooks:
+      - id: docformatter
+        args: [ -r, -i, --wrap-summaries=88, --wrap-descriptions=88, src, tests ]
+
+  # bandit: security
+  - repo: https://github.com/pycqa/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        exclude: ^tests/
+        args: [ -r, src ]
+
+  # pytest: test runner
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: poetry run pytest tests --cov=src
+        language: system
+        types: [python]
+        pass_filenames: false
+
