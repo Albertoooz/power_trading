@@ -1,34 +1,33 @@
-FROM python:3.13.2-slim-bookworm AS python-base
+# Use official Python 3.13 slim image as base
+FROM python:3.13-slim-bookworm AS base
 
+# Set environment variables for Python
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    WORKDIR_PATH="/opt/python-boilerplate" \
-    VIRTUAL_ENV="/opt/python-boilerplate/.venv"
+    POETRY_VIRTUALENVS_CREATE=false \
+    POETRY_NO_INTERACTION=1
 
-ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+# Set working directory inside container
+WORKDIR /app
 
-FROM python-base AS builder-base
+# Install dependencies needed for poetry and building wheels
+RUN apt-get update && apt-get install -y curl build-essential && rm -rf /var/lib/apt/lists/*
 
-COPY --from=ghcr.io/astral-sh/uv:0.6.5 /uv /uvx /bin/
+# Install Poetry
+RUN curl -sSL https://install.python-poetry.org | python3 -
 
-WORKDIR $WORKDIR_PATH
+# Add Poetry to PATH
+ENV PATH="/root/.local/bin:$PATH"
 
-COPY . .
+# Copy only poetry config first for better caching
+COPY poetry.lock pyproject.toml /app/
 
-RUN uv sync --frozen
+# Install dependencies
+RUN poetry install --no-root --only main
 
-FROM builder-base AS development
+# Copy application source code
+COPY src /app/src
+COPY scripts /app/scripts
 
-CMD ["python","-m", "python_boilerplate.main"]
-
-FROM python-base AS production
-
-COPY --from=builder-base $VIRTUAL_ENV $VIRTUAL_ENV
-
-WORKDIR $WORKDIR_PATH
-
-COPY ./src/ ./
-
-USER 10000
-
-CMD ["python","-m", "python_boilerplate.main"]
+# Default command to run your main trading script
+CMD ["python", "scripts/run_bot.py"]
