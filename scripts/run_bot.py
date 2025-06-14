@@ -8,5 +8,6 @@ def main() -> None:
     # Tu możesz dodać inicjalizację robota, np. stworzyć strategię, załadować dane, itp.
     print("Bot is running...")
 
+
 if __name__ == "__main__":
     main()
