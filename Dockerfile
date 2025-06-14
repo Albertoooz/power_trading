@@ -1,37 +1,36 @@
 # Use official Python 3.13 slim image as base
 FROM python:3.13-slim-bookworm AS base
 
-# Set environment variables for Python and Poetry
-ENV PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1 \
-    POETRY_VIRTUALENVS_CREATE=false \   # Disable Poetry virtualenv creation inside container
-    POETRY_NO_INTERACTION=1             # Disable interactive prompts during Poetry install
+# Disable Python output buffering
+ENV PYTHONUNBUFFERED=1
+# Prevent Python from writing .pyc files
+ENV PYTHONDONTWRITEBYTECODE=1
+# Disable Poetry virtualenv creation inside container
+ENV POETRY_VIRTUALENVS_CREATE=false
+# Disable interactive prompts during Poetry install
+ENV POETRY_NO_INTERACTION=1
 
 # Set working directory inside container
 WORKDIR /app
 
-# Install system dependencies required for Poetry and building Python packages
-RUN apt-get update && apt-get install -y \
-    curl \
-    build-essential \
-    && rm -rf /var/lib/apt/lists/*
+# Install dependencies needed for poetry and building wheels
+RUN apt-get update && apt-get install -y curl build-essential && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry using the official installer script
+# Install Poetry
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
-# Add Poetry to PATH for this container session
+# Add Poetry to PATH
 ENV PATH="/root/.local/bin:$PATH"
 
-# Copy only the Poetry config files first to leverage Docker layer caching
+# Copy only poetry config files first for better caching
 COPY poetry.lock pyproject.toml /app/
 
-# Install Python dependencies without installing the local package (--no-root),
-# only main dependencies (not dev)
+# Install dependencies (main dependencies only, no root package)
 RUN poetry install --no-root --only main
 
-# Copy the rest of your application code
+# Copy application source code
 COPY src /app/src
 COPY scripts /app/scripts
 
-# Default command: run your trading bot script
+# Default command to run your main trading script
 CMD ["python", "scripts/run_bot.py"]
