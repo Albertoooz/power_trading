@@ -10,14 +10,14 @@ def test_strategy_instantiation():
 
     # Przygotuj proste dane do backtestu
     data_dict = {
-        'open': [1, 2, 3],
-        'high': [1, 2, 3],
-        'low': [1, 2, 3],
-        'close': [1, 2, 3],
-        'volume': [100, 200, 300],
-        'openinterest': [0, 0, 0]
+        "open": [1, 2, 3],
+        "high": [1, 2, 3],
+        "low": [1, 2, 3],
+        "close": [1, 2, 3],
+        "volume": [100, 200, 300],
+        "openinterest": [0, 0, 0],
     }
-    df = pd.DataFrame(data_dict, index=pd.date_range('2023-01-01', periods=3))
+    df = pd.DataFrame(data_dict, index=pd.date_range("2023-01-01", periods=3))
 
     data = bt.feeds.PandasData(dataname=df)
     cerebro.adddata(data)
