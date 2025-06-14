@@ -4,7 +4,7 @@ import pandas as pd
 from power_trading.strategy import MyStrategy  # dostosuj jeśli masz inną nazwę folderu
 
 
-def test_strategy_instantiation():
+def test_strategy_instantiation() -> None:
     cerebro = bt.Cerebro()
     cerebro.addstrategy(MyStrategy)
 

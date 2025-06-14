@@ -7,7 +7,7 @@ import backtrader as bt
 from .strategy import MyStrategy
 
 
-def run_backtest():
+def run_backtest() -> None:
     cerebro = bt.Cerebro()
     data = bt.feeds.YahooFinanceData(
         dataname="AAPL", fromdate=datetime(2023, 1, 1), todate=datetime(2024, 1, 1)
