@@ -5,19 +5,27 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y build-essential curl && rm -rf /var/lib/apt/lists/*
+# 1. Zainstaluj systemowe pakiety potrzebne do budowy
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    python3-dev \
+    libffi-dev \
+    libssl-dev \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy project files needed for install
+# 2. Skopiuj pliki konfiguracyjne potrzebne do instalacji
 COPY pyproject.toml poetry.lock LICENSE README.md /app/
 
-# Install build backend and dependencies
-RUN pip install --upgrade pip setuptools wheel hatch
+# 3. Zaktualizuj pip i zainstaluj hatchling build backend
+RUN pip install --upgrade pip setuptools wheel hatchling
 
-# Install dependencies (main only)
+# 4. Zainstaluj pakiet (główne zależności)
 RUN pip install --no-cache-dir .
 
-# Copy source code
+# 5. Skopiuj resztę kodu źródłowego
 COPY src /app/src
 COPY scripts /app/scripts
 
+# 6. Domyślny CMD - uruchomienie bota
 CMD ["python", "scripts/run_bot.py"]

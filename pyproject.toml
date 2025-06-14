@@ -76,3 +76,7 @@ mypy = "^1.16.0"
 bandit = "^1.8.3"
 docformatter = "^1.7.5"
 pre-commit = "^4.2.0"
+
+[tool.hatch.build.targets.wheel]
+packages = ["power_trading"]
+package-dir = {"" = "src"}
