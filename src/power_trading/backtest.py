@@ -4,6 +4,8 @@ import backtrader as bt
 import pandas as pd
 import numpy as np
 from power_trading.data.yahoo_loader import YahooFinanceLoader
+
+
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 
