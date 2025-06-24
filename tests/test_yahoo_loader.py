@@ -1,5 +1,6 @@
-from power_trading.data.yahoo_loader import YahooFinanceLoader
 import pytest
+
+from power_trading.data.yahoo_loader import YahooFinanceLoader
 
 
 def test_yahoo_loader_success():
