@@ -62,11 +62,13 @@ files = ["src", "tests"]
 strict = true
 
 [tool.poetry.dependencies]
-backtrader = "^1.9.78.123"
+plotly = "^5.18.0"
+backtrader = "^1.9.76.123"
 pandas = "^2.3.0"
 numpy = "^2.3.0"
 matplotlib = "^3.10.3"
 scikit-learn = "^1.7.0"
+yfinance = "^0.2.63"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.4.0"

@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+      {
+          "name": "Python: Run Bot with MA Strategy",
+          "type": "python",
+          "request": "launch",
+          "program": "${workspaceFolder}/scripts/run_bot.py",
+          "args": ["--strategy", "ma"],
+          "console": "integratedTerminal",
+          "justMyCode": true,
+          "python": "${command:python.interpreterPath}",  // Używa aktywnego interpretera
+          "env": {
+              "PYTHONPATH": "${workspaceFolder}"
+          }
+      }
+  ]
+}
