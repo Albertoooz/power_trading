@@ -1,5 +1,6 @@
-import yfinance as yf
 import pandas as pd
+import yfinance as yf
+
 from .base_loader import BaseDataLoader
 
 
@@ -9,8 +10,10 @@ class YahooFinanceLoader(BaseDataLoader):
     ) -> pd.DataFrame:
         """Load and properly format data for Backtrader with uppercase columns."""
         # Download data with column organization
-        data = yf.download(ticker, start=start, end=end, interval=interval, group_by='column')
-        
+        data = yf.download(
+            ticker, start=start, end=end, interval=interval, group_by="column"
+        )
+
         if data.empty:
             raise ValueError(f"No data found for {ticker}")
 
@@ -27,7 +30,7 @@ class YahooFinanceLoader(BaseDataLoader):
 
         # Find and map columns
         col_mapping = {}
-        for standard_col in ['Close', 'High', 'Low', 'Open', 'Volume']:
+        for standard_col in ["Close", "High", "Low", "Open", "Volume"]:
             # Find matching columns (case insensitive)
             matches = [col for col in data.columns if standard_col.lower() in col.lower()]
             if matches:
@@ -36,7 +39,7 @@ class YahooFinanceLoader(BaseDataLoader):
         print("\nDiscovered mapping:", col_mapping)
 
         # Verify we found all required columns
-        required = ['Close', 'High', 'Low', 'Open', 'Volume']
+        required = ["Close", "High", "Low", "Open", "Volume"]
         if len(col_mapping) < len(required):
             missing = set(required) - set(col_mapping.values())
             raise ValueError(

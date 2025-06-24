@@ -1,13 +1,15 @@
 import backtrader as bt
 
+
 class BreakoutStrategy(bt.Strategy):
     params = (
         ("period", 20),  # okres do szukania maksimum/minimum
     )
 
     def __init__(self):
-        # najwyższa cena zamknięcia z ostatnich n okresów, z wyłączeniem bieżącego (shift=1)
-        self.highest = bt.indicators.Highest(self.data.close(-1), period=self.params.period)
+        self.highest = bt.indicators.Highest(
+            self.data.close(-1), period=self.params.period
+        )
         # najniższa cena zamknięcia z ostatnich n okresów, z wyłączeniem bieżącego
         self.lowest = bt.indicators.Lowest(self.data.close(-1), period=self.params.period)
 

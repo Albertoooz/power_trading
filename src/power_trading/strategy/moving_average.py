@@ -3,8 +3,8 @@ import backtrader as bt
 
 class MovingAverageStrategy(bt.Strategy):
     params = (
-        ('fast_period', 20),
-        ('slow_period', 50),
+        ("fast_period", 20),
+        ("slow_period", 50),
     )
 
     def __init__(self):
@@ -19,8 +19,19 @@ class MovingAverageStrategy(bt.Strategy):
         if not self.position:
             if self.crossover > 0:
                 self.buy()
-                self.trades.append({'date': self.data.datetime.date(0), 'price': self.data.close[0], 'size': 1})
+                self.trades.append(
+                    {
+                        "date": self.data.datetime.date(0),
+                        "price": self.data.close[0],
+                        "size": 1,
+                    }
+                )
         elif self.crossover < 0:
             self.close()
-            self.trades.append({'date': self.data.datetime.date(0), 'price': self.data.close[0], 'size': -1})
-
+            self.trades.append(
+                {
+                    "date": self.data.datetime.date(0),
+                    "price": self.data.close[0],
+                    "size": -1,
+                }
+            )
