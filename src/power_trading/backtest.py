@@ -1,17 +1,18 @@
 import importlib
-from typing import Any
+from typing import Any, cast
 
 try:
-    import backtrader as bt  # type: ignore
+    import backtrader as bt
 except ImportError:
     raise ImportError("Please install backtrader: pip install backtrader")
 
 import numpy as np
 import pandas as pd
+from pandas import DataFrame, Series
 
 try:
-    import plotly.graph_objects as go  # type: ignore
-    from plotly.subplots import make_subplots  # type: ignore
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
 except ImportError:
     raise ImportError("Please install plotly: pip install plotly")
 
@@ -23,9 +24,9 @@ class PlotlyVisualizer:
     def plot_backtest(
         cls,
         strategy: Any,
-        strategy_params: dict,
-        df: pd.DataFrame,
-        equity_curve: pd.Series,
+        strategy_params: dict[str, Any],
+        df: DataFrame,
+        equity_curve: Series,
     ) -> go.Figure:
         """Plot backtest results using Plotly.
 
@@ -148,7 +149,18 @@ class PlotlyVisualizer:
         return fig
 
 
-def load_strategy(strategy_name: str):
+def load_strategy(strategy_name: str) -> type[bt.Strategy]:
+    """Load strategy class by name.
+
+    Args:
+        strategy_name: Name of the strategy module
+
+    Returns:
+        Strategy class
+
+    Raises:
+        ValueError: If strategy module or class not found
+    """
     module_name = f"power_trading.strategy.{strategy_name}"
     try:
         module = importlib.import_module(module_name)
@@ -160,7 +172,7 @@ def load_strategy(strategy_name: str):
     )
 
     try:
-        strategy_class = getattr(module, class_name)
+        strategy_class = cast(type[bt.Strategy], getattr(module, class_name))
     except AttributeError:
         raise ValueError(
             f"Strategy class '{class_name}' not found in module '{module_name}'."
@@ -169,7 +181,23 @@ def load_strategy(strategy_name: str):
     return strategy_class
 
 
-def compute_stats(equity_curve, initial_cash, trade_analysis, benchmark_returns=None):
+def compute_stats(
+    equity_curve: Series,
+    initial_cash: float,
+    trade_analysis: Any,
+    benchmark_returns: Series | None = None,
+) -> dict[str, float | int]:
+    """Compute backtest statistics.
+
+    Args:
+        equity_curve: Series with equity curve data
+        initial_cash: Initial cash amount
+        trade_analysis: Trade analyzer results
+        benchmark_returns: Optional benchmark returns series
+
+    Returns:
+        Dictionary with computed statistics
+    """
     # Convert equity curve to pandas Series if it isn't already
     equity = pd.Series(equity_curve)
 
@@ -252,34 +280,50 @@ def compute_stats(equity_curve, initial_cash, trade_analysis, benchmark_returns=
     except Exception:
         drawdown = 0
 
-    # Calculate trading metrics
-    total_trades = (
-        trade_analysis.total.closed if hasattr(trade_analysis.total, "closed") else 0
+    # Calculate trading metrics with safe access to trade analysis data
+    total_trades = 0
+    won = 0
+    lost = 0
+    avg_win = 0
+    avg_loss = 0
+
+    try:
+        if hasattr(trade_analysis, "total") and hasattr(trade_analysis.total, "total"):
+            total_trades = trade_analysis.total.total
+            if hasattr(trade_analysis, "won"):
+                won = (
+                    trade_analysis.won.total
+                    if hasattr(trade_analysis.won, "total")
+                    else 0
+                )
+                avg_win = (
+                    trade_analysis.won.pnl.average
+                    if hasattr(trade_analysis.won, "pnl")
+                    else 0
+                )
+            if hasattr(trade_analysis, "lost"):
+                lost = (
+                    trade_analysis.lost.total
+                    if hasattr(trade_analysis.lost, "total")
+                    else 0
+                )
+                avg_loss = (
+                    trade_analysis.lost.pnl.average
+                    if hasattr(trade_analysis.lost, "pnl")
+                    else 0
+                )
+    except Exception as e:
+        print(f"Error accessing trade analysis data: {str(e)}")
+
+    # Calculate win rate and related metrics
+    win_rate = (won / total_trades * 100) if total_trades > 0 else 0
+    loss_rate = (lost / total_trades * 100) if total_trades > 0 else 0
+
+    # Calculate expectancy and profit-loss ratio
+    expectancy = (
+        (win_rate * avg_win + loss_rate * avg_loss) / 100 if total_trades > 0 else 0
     )
-    won = trade_analysis.won.total if hasattr(trade_analysis.won, "total") else 0
-    lost = trade_analysis.lost.total if hasattr(trade_analysis.lost, "total") else 0
-
-    # Calculate win rate and related metrics with error handling
-    if total_trades > 0:
-        win_rate = (won / total_trades) * 100
-        loss_rate = (lost / total_trades) * 100
-    else:
-        win_rate = 0
-        loss_rate = 0
-
-    avg_win = trade_analysis.won.pnl.average if won > 0 else 0
-    avg_loss = trade_analysis.lost.pnl.average if lost > 0 else 0
-
-    # Calculate expectancy and profit-loss ratio with error handling
-    if total_trades > 0:
-        expectancy = (win_rate * avg_win + loss_rate * avg_loss) / 100
-    else:
-        expectancy = 0
-
-    if avg_loss != 0:
-        profit_loss_ratio = avg_win / abs(avg_loss)
-    else:
-        profit_loss_ratio = 0
+    profit_loss_ratio = avg_win / abs(avg_loss) if avg_loss != 0 else 0
 
     # Calculate portfolio metrics
     info_ratio = sharpe  # Using Sharpe as Information Ratio for simplicity
@@ -314,13 +358,24 @@ def compute_stats(equity_curve, initial_cash, trade_analysis, benchmark_returns=
     }
 
 
-def run_backtest(params):
+def run_backtest(params: dict[str, Any]) -> tuple[dict[str, float | int], go.Figure]:
+    """Run backtest with given parameters.
+
+    Args:
+        params: Dictionary with backtest parameters
+
+    Returns:
+        Tuple of (statistics dictionary, plotly figure)
+    """
     df = YahooFinanceLoader().load_data(params["ticker"], params["start"], params["end"])
     df.index = pd.to_datetime(df.index)
 
     # Load benchmark data (S&P 500)
     benchmark_df = YahooFinanceLoader().load_data("^GSPC", params["start"], params["end"])
-    benchmark_returns = benchmark_df["Close"].pct_change().dropna()
+    benchmark_returns = pd.Series(
+        benchmark_df["Close"].pct_change().dropna().values,
+        index=benchmark_df["Close"].pct_change().dropna().index,
+    )
 
     cerebro = bt.Cerebro()
     cerebro.broker.setcash(params["cash"])

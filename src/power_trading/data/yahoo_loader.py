@@ -1,63 +1,74 @@
+from typing import cast
+
 import pandas as pd
 import yfinance as yf
+from pandas import DataFrame
 
 from .base_loader import BaseDataLoader
 
 
 class YahooFinanceLoader(BaseDataLoader):
+    """Loader for Yahoo Finance data."""
+
     def load_data(
-        self, ticker: str, start: str, end: str, interval: str = "1d"
-    ) -> pd.DataFrame:
-        """Load and properly format data for Backtrader with uppercase columns."""
-        # Download data with column organization
-        data = yf.download(
-            ticker, start=start, end=end, interval=interval, group_by="column"
+        self,
+        symbol: str,
+        start_date: str,
+        end_date: str,
+        interval: str = "1d",
+    ) -> DataFrame:
+        """Load data from Yahoo Finance.
+
+        Args:
+            symbol: The ticker symbol
+            start_date: Start date in YYYY-MM-DD format
+            end_date: End date in YYYY-MM-DD format
+            interval: Data interval (default: "1d")
+
+        Returns:
+            DataFrame with OHLCV data
+        """
+        data = cast(
+            DataFrame,
+            yf.download(
+                symbol,
+                start=start_date,
+                end=end_date,
+                interval=interval,
+                progress=False,
+            ),
         )
 
-        if data.empty:
-            raise ValueError(f"No data found for {ticker}")
+        if len(data) == 0:
+            return pd.DataFrame()
 
-        # Debug original structure
-        print("\n=== ORIGINAL DATA ===")
-        print("Columns:", data.columns)
-        print("Sample:\n", data.head(2))
-
-        # Handle MultiIndex columns
+        # Handle multi-level columns
         if isinstance(data.columns, pd.MultiIndex):
-            # Flatten to 'Close_AAPL' format
-            data.columns = [f"{col[1]}_{col[0]}" for col in data.columns]
-            print("\nFlattened columns:", data.columns)
+            # Flatten multi-level columns
+            data.columns = [f"{symbol}_{col[0]}" for col in data.columns]
 
-        # Find and map columns
-        col_mapping = {}
-        for standard_col in ["Close", "High", "Low", "Open", "Volume"]:
-            # Find matching columns (case insensitive)
-            matches = [col for col in data.columns if standard_col.lower() in col.lower()]
-            if matches:
-                col_mapping[matches[0]] = standard_col
+            # Create mapping for renaming
+            rename_map = {
+                f"{symbol}_Open": "Open",
+                f"{symbol}_High": "High",
+                f"{symbol}_Low": "Low",
+                f"{symbol}_Close": "Close",
+                f"{symbol}_Volume": "Volume",
+            }
 
-        print("\nDiscovered mapping:", col_mapping)
+            # Print debug info
+            print("\n=== ORIGINAL DATA ===")
+            print(f"Columns: {data.columns}")
+            print("Sample:\n", data.head(2))
 
-        # Verify we found all required columns
-        required = ["Close", "High", "Low", "Open", "Volume"]
-        if len(col_mapping) < len(required):
-            missing = set(required) - set(col_mapping.values())
-            raise ValueError(
-                f"Missing columns: {missing}\n"
-                f"Available columns: {list(data.columns)}\n"
-                f"Mapping: {col_mapping}"
-            )
+            # Rename columns
+            data = data.rename(columns=rename_map)
 
-        # Apply mapping and select columns
-        data = data.rename(columns=col_mapping)
-        data = data[required]  # Enforce column order
+            # Print debug info
+            print("\nDiscovered mapping:", rename_map)
 
-        # Final processing
-        data.index = pd.to_datetime(data.index)
-        data.dropna(inplace=True)
-
-        print("\n=== FINAL DATA ===")
-        print("Columns:", data.columns)
-        print("Sample:\n", data.head(2))
+            print("\n=== FINAL DATA ===")
+            print(f"Columns: {data.columns}")
+            print("Sample:\n", data.head(2))
 
         return data

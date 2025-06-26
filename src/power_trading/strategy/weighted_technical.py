@@ -1,23 +1,33 @@
+from typing import Any
+
 import backtrader as bt
 
 
 class WeightedTechnicalStrategy(bt.Strategy):
-    params = (
-        ("macd_fast", 12),
-        ("macd_slow", 26),
-        ("macd_signal", 9),
-        ("rsi_period", 14),
-        ("bb_period", 20),
-        ("bb_dev", 2),
-        ("stoch_period", 14),
-        ("stoch_k", 3),
-        ("stoch_d", 3),
-        ("buy_threshold", 0.3),
-        ("sell_threshold", -0.3),
-        ("risk_pct", 0.02),  # Risk 2% per trade
+    """Strategy that combines multiple technical indicators with weights."""
+
+    params = dict(
+        rsi_period=14,
+        rsi_upper=70,
+        rsi_lower=30,
+        rsi_weight=0.3,
+        macd_fast=12,
+        macd_slow=26,
+        macd_signal=9,
+        macd_weight=0.3,
+        bb_period=20,
+        bb_dev=2,
+        bb_weight=0.4,
     )
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize strategy parameters."""
+        # RSI
+        self.rsi = bt.indicators.RSI(
+            self.data.close,
+            period=self.p.rsi_period,
+        )
+
         # MACD
         self.macd = bt.indicators.MACD(
             self.data.close,
@@ -26,108 +36,87 @@ class WeightedTechnicalStrategy(bt.Strategy):
             period_signal=self.p.macd_signal,
         )
 
-        # RSI
-        self.rsi = bt.indicators.RSI(self.data.close, period=self.p.rsi_period)
-
         # Bollinger Bands
         self.bb = bt.indicators.BollingerBands(
-            self.data.close, period=self.p.bb_period, devfactor=self.p.bb_dev
+            self.data.close,
+            period=self.p.bb_period,
+            devfactor=self.p.bb_dev,
         )
 
-        # Stochastic
-        self.stoch = bt.indicators.Stochastic(
-            self.data,
-            period=self.p.stoch_period,
-            period_dfast=self.p.stoch_k,
-            period_dslow=self.p.stoch_d,
-        )
+        self.trades: list[dict[str, Any]] = []
+        self.equity_curve: list[float] = []
 
-        self.equity_curve = []
-        self.trades = []
+    def get_rsi_signal(self) -> float:
+        """Get RSI signal (-1 to 1)."""
+        rsi_value = float(self.rsi[0])
+        if rsi_value < self.p.rsi_lower:
+            return 1.0
+        elif rsi_value > self.p.rsi_upper:
+            return -1.0
+        return 0.0
 
-    def normalize_macd(self):
-        # Normalize MACD between -1 and 1 using recent history
-        macd_hist = self.macd.macd - self.macd.signal
-        if len(macd_hist) > 0:
-            max_hist = max(abs(macd_hist[-20:]))  # Use last 20 periods
-            return macd_hist[0] / max_hist if max_hist != 0 else 0
-        return 0
+    def get_macd_signal(self) -> float:
+        """Get MACD signal (-1 to 1)."""
+        macd = float(self.macd.macd[0])
+        signal = float(self.macd.signal[0])
+        result: float = 1.0 if macd > signal else -1.0
+        return result
 
-    def normalize_rsi(self):
-        # Convert RSI to -1 to 1 scale
-        return (self.rsi[0] - 50) / 50
+    def get_bb_signal(self) -> float:
+        """Get Bollinger Bands signal (-1 to 1)."""
+        price = float(self.data.close[0])
+        bottom = float(self.bb.bot[0])
+        top = float(self.bb.top[0])
+        if price < bottom:
+            return 1.0
+        elif price > top:
+            return -1.0
+        return 0.0
 
-    def normalize_bb(self):
-        # Calculate position within Bollinger Bands
-        mid = self.bb.mid[0]
-        top = self.bb.top[0]
-        bot = self.bb.bot[0]
-        price = self.data.close[0]
+    def get_weighted_signal(self) -> float:
+        """Calculate weighted signal from all indicators."""
+        rsi_signal = self.get_rsi_signal() * self.p.rsi_weight
+        macd_signal = self.get_macd_signal() * self.p.macd_weight
+        bb_signal = self.get_bb_signal() * self.p.bb_weight
 
-        if price > mid:
-            return (price - mid) / (top - mid) if (top - mid) != 0 else 0
-        else:
-            return (price - mid) / (mid - bot) if (mid - bot) != 0 else 0
+        return rsi_signal + macd_signal + bb_signal
 
-    def normalize_stoch(self):
-        # Convert Stochastic to -1 to 1 scale
-        return (self.stoch.percK[0] - 50) / 50
-
-    def calculate_position_size(self):
-        # Calculate position size based on risk percentage
-        price = self.data.close[0]
-        atr = bt.indicators.ATR(self.data, period=14)[0]
-
-        if atr == 0:  # Avoid division by zero
-            return 0
-
-        risk_amount = self.broker.getvalue() * self.p.risk_pct
-        stop_distance = atr * 2  # Use 2 ATR for stop loss
-
-        return int(risk_amount / (price * stop_distance))
-
-    def next(self):
-        self.equity_curve.append(self.broker.getvalue())
-
-        # Calculate weighted signal
-        macd_signal = self.normalize_macd() * 1.0  # Weight: 1.0
-        rsi_signal = self.normalize_rsi() * 1.0  # Weight: 1.0
-        bb_signal = self.normalize_bb() * 0.5  # Weight: 0.5
-        stoch_signal = self.normalize_stoch() * 0.5  # Weight: 0.5
-
-        # Combined signal
-        total_signal = (
-            macd_signal + rsi_signal + bb_signal + stoch_signal
-        ) / 3.0  # Sum of weights = 3.0
-
-        # Debug prints
-        if len(self.equity_curve) % 20 == 0:  # Print every 20 bars
-            print(f"\nSignal Components at {self.data.datetime.date(0)}:")
-            print(f"MACD: {macd_signal:.3f}")
-            print(f"RSI: {rsi_signal:.3f}")
-            print(f"BB: {bb_signal:.3f}")
-            print(f"Stoch: {stoch_signal:.3f}")
-            print(f"Total: {total_signal:.3f}")
-
-        position_size = self.calculate_position_size()
+    def next(self) -> None:
+        """Execute trading logic."""
+        signal = self.get_weighted_signal()
 
         if not self.position:
-            if total_signal > self.p.buy_threshold:
-                self.buy(size=position_size)
+            if signal > 0.3:  # Strong buy signal
+                self.buy()
                 self.trades.append(
                     {
                         "date": self.data.datetime.date(0),
-                        "price": self.data.close[0],
-                        "size": position_size,
+                        "price": float(self.data.close[0]),  # Convert to float explicitly
+                        "size": 1,
+                    }
+                )
+            elif signal < -0.3:  # Strong sell signal
+                self.sell()
+                self.trades.append(
+                    {
+                        "date": self.data.datetime.date(0),
+                        "price": float(self.data.close[0]),  # Convert to float explicitly
+                        "size": -1,
                     }
                 )
         else:
-            if total_signal < self.p.sell_threshold:
+            if (self.position.size > 0 and signal < -0.3) or (
+                self.position.size < 0 and signal > 0.3
+            ):
                 self.close()
                 self.trades.append(
                     {
                         "date": self.data.datetime.date(0),
-                        "price": self.data.close[0],
-                        "size": -position_size,
+                        "price": float(self.data.close[0]),  # Convert to float explicitly
+                        "size": 0,
                     }
                 )
+
+        self.equity_curve.append(
+            float(self.broker.getvalue())
+        )  # Convert to float explicitly

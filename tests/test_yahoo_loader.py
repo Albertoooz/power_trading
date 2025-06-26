@@ -1,15 +1,19 @@
-import pytest
+from pandas import DataFrame
 
 from power_trading.data.yahoo_loader import YahooFinanceLoader
 
 
-def test_yahoo_loader_success():
+def test_load_data_success() -> None:
+    """Test successful data loading."""
     loader = YahooFinanceLoader()
-    df = loader.load_data("AAPL", "2023-01-01", "2023-01-15")
-    assert not df.empty
+    data = loader.load_data("AAPL", "2023-01-01", "2023-01-31")
+    assert isinstance(data, DataFrame)
+    assert not data.empty
 
 
-def test_yahoo_loader_invalid():
+def test_load_data_invalid_ticker() -> None:
+    """Test loading data for invalid ticker."""
     loader = YahooFinanceLoader()
-    with pytest.raises(ValueError):
-        loader.load_data("INVALID123", "2023-01-01", "2023-01-15")
+    data = loader.load_data("INVALID_TICKER", "2023-01-01", "2023-01-31")
+    assert isinstance(data, DataFrame)
+    assert data.empty

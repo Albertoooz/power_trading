@@ -1,35 +1,36 @@
-import backtrader as bt  # type: ignore
+from typing import Any
+
+import backtrader as bt
 
 
 class OptimizedTechnicalStrategy(bt.Strategy):
-    """Optimized technical strategy based on optimization results.
+    """Strategy that combines multiple technical indicators with optimized
+    parameters."""
 
-    Uses MACD, RSI, Bollinger Bands and Stochastic oscillator for generating trading
-    signals. Parameters have been optimized using historical data.
-    """
-
-    params = (
-        # MACD parameters (optimized)
-        ("macd_fast", 9),
-        ("macd_slow", 39),
-        ("macd_signal", 15),
-        # RSI parameters (optimized)
-        ("rsi_period", 16),
-        ("rsi_oversold", 35),
-        ("rsi_overbought", 63),
-        # Bollinger Bands parameters (optimized)
-        ("bb_period", 15),
-        ("bb_dev", 1.62),  # Rounded from 1.6201634445305326
-        # Stochastic parameters (optimized)
-        ("stoch_period", 20),
-        ("stoch_smooth", 9),
-        ("stoch_oversold", 28),
-        ("stoch_overbought", 73),
-        # Risk management
-        ("risk_per_trade", 0.02),  # 2% risk per trade
+    params = dict(
+        rsi_period=14,
+        rsi_upper=70,
+        rsi_lower=30,
+        rsi_weight=0.3,
+        macd_fast=12,
+        macd_slow=26,
+        macd_signal=9,
+        macd_weight=0.3,
+        bb_period=20,
+        bb_dev=2,
+        bb_weight=0.4,
+        atr_period=14,
+        risk_pct=0.02,  # Risk 2% per trade
     )
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize strategy parameters."""
+        # RSI
+        self.rsi = bt.indicators.RSI(
+            self.data.close,
+            period=self.p.rsi_period,
+        )
+
         # MACD
         self.macd = bt.indicators.MACD(
             self.data.close,
@@ -38,179 +39,116 @@ class OptimizedTechnicalStrategy(bt.Strategy):
             period_signal=self.p.macd_signal,
         )
 
-        # RSI
-        self.rsi = bt.indicators.RSI(self.data.close, period=self.p.rsi_period)
-
         # Bollinger Bands
         self.bb = bt.indicators.BollingerBands(
-            self.data.close, period=self.p.bb_period, devfactor=self.p.bb_dev
-        )
-
-        # Stochastic
-        self.stoch = bt.indicators.Stochastic(
-            self.data,
-            period=self.p.stoch_period,
-            period_dfast=self.p.stoch_smooth,
-            period_dslow=self.p.stoch_smooth,
+            self.data.close,
+            period=self.p.bb_period,
+            devfactor=self.p.bb_dev,
         )
 
         # ATR for position sizing
-        self.atr = bt.indicators.ATR(self.data, period=14)
+        self.atr = bt.indicators.ATR(
+            self.data,
+            period=self.p.atr_period,
+        )
 
-        # Track performance
-        self.equity_curve = []
-        self.trades = []
+        self.trades: list[dict[str, Any]] = []
+        self.equity_curve: list[float] = []
 
-    def normalize_macd(self):
-        """Normalize MACD between -1 and 1 using recent history."""
-        if len(self.data) < 20:  # Need at least 20 periods
+    def get_rsi_signal(self) -> float:
+        """Get RSI signal (-1 to 1)."""
+        rsi_value = float(self.rsi[0])  # Access RSI value directly
+        if rsi_value < self.p.rsi_lower:
+            return 1.0  # Oversold - buy signal
+        elif rsi_value > self.p.rsi_upper:
+            return -1.0  # Overbought - sell signal
+        return 0.0
+
+    def get_macd_signal(self) -> float:
+        """Get MACD signal (-1 to 1)."""
+        macd = float(self.macd.lines.macd[0])  # Access MACD line
+        signal = float(self.macd.lines.signal[0])  # Access signal line
+        result: float = (
+            1.0 if macd > signal else -1.0
+        )  # Buy when MACD crosses above signal
+        return result
+
+    def get_bb_signal(self) -> float:
+        """Get Bollinger Bands signal (-1 to 1)."""
+        price = float(self.data.close[0])
+        bottom = float(self.bb.lines.bot[0])  # Access bottom band
+        top = float(self.bb.lines.top[0])  # Access top band
+        if price < bottom:
+            return 1.0  # Price below lower band - buy signal
+        elif price > top:
+            return -1.0  # Price above upper band - sell signal
+        return 0.0
+
+    def get_weighted_signal(self) -> float:
+        """Calculate weighted signal from all indicators."""
+        rsi_signal = self.get_rsi_signal() * self.p.rsi_weight
+        macd_signal = self.get_macd_signal() * self.p.macd_weight
+        bb_signal = self.get_bb_signal() * self.p.bb_weight
+
+        return rsi_signal + macd_signal + bb_signal
+
+    def calculate_position_size(self) -> int:
+        """Calculate position size based on risk percentage."""
+        price = float(self.data.close[0])
+        atr = float(self.atr[0])  # Access ATR value directly
+
+        if atr == 0:  # Avoid division by zero
             return 0
 
-        # Calculate current MACD histogram
-        current_hist = self.macd.macd[0] - self.macd.signal[0]
-
-        # Find max absolute value in recent history
-        max_hist = 0
-        for i in range(20):
-            hist = self.macd.macd[-i] - self.macd.signal[-i]
-            max_hist = max(max_hist, abs(hist))
-
-        if max_hist > 0:
-            return current_hist / max_hist
-        return 0
-
-    def get_rsi_signal(self):
-        """Convert RSI to a trading signal based on optimized thresholds."""
-        if self.rsi[0] < self.p.rsi_oversold:
-            return 1.0  # Strong buy signal
-        elif self.rsi[0] > self.p.rsi_overbought:
-            return -1.0  # Strong sell signal
-        return 0  # Neutral
-
-    def get_bb_signal(self):
-        """Calculate position within Bollinger Bands."""
-        mid = self.bb.mid[0]
-        top = self.bb.top[0]
-        bot = self.bb.bot[0]
-        price = self.data.close[0]
-
-        if price > top:
-            return -1.0  # Strong sell signal
-        elif price < bot:
-            return 1.0  # Strong buy signal
-        elif price > mid:
-            return -0.5 * (price - mid) / (top - mid) if (top - mid) != 0 else 0
-        else:
-            return 0.5 * (mid - price) / (mid - bot) if (mid - bot) != 0 else 0
-
-    def get_stoch_signal(self):
-        """Get Stochastic signal based on optimized thresholds."""
-        if (
-            self.stoch.percK[0] < self.p.stoch_oversold
-            and self.stoch.percD[0] < self.p.stoch_oversold
-        ):
-            return 1.0  # Strong buy signal
-        elif (
-            self.stoch.percK[0] > self.p.stoch_overbought
-            and self.stoch.percD[0] > self.p.stoch_overbought
-        ):
-            return -1.0  # Strong sell signal
-        return 0  # Neutral
-
-    def calculate_position_size(self):
-        """Calculate position size based on risk percentage and ATR."""
-        price = self.data.close[0]
-        atr = self.atr[0]
-
-        if atr == 0 or price == 0:  # Avoid division by zero
-            return 0
-
-        risk_amount = self.broker.getvalue() * self.p.risk_per_trade
+        risk_amount = float(self.broker.getvalue()) * self.p.risk_pct
         stop_distance = atr * 2  # Use 2 ATR for stop loss
-        position_size = risk_amount / (stop_distance * price)
 
-        # Ensure minimum position size of 1 share if we want to trade
-        if position_size > 0:
-            return max(1, int(position_size))
-        return 0
+        return max(
+            1, int(risk_amount / (price * stop_distance))
+        )  # Ensure at least 1 share
 
-    def next(self):
-        """Main strategy logic."""
-        # Calculate signals from each indicator
-        macd_signal = self.normalize_macd() * 1.0  # Weight: 1.0
-        rsi_signal = self.get_rsi_signal() * 1.0  # Weight: 1.0
-        bb_signal = self.get_bb_signal() * 0.5  # Weight: 0.5
-        stoch_signal = self.get_stoch_signal() * 0.5  # Weight: 0.5
+    def next(self) -> None:
+        """Execute trading logic."""
+        signal = self.get_weighted_signal()
+        position_size = self.calculate_position_size()
 
-        # Combine signals
-        total_signal = (
-            macd_signal + rsi_signal + bb_signal + stoch_signal
-        ) / 3.0  # Sum of weights
-
-        # Calculate position size
-        size = self.calculate_position_size()
-
-        # Entry/exit logic
-        if not self.position:  # No position
-            if total_signal > 0.5:  # Strong buy signal
-                self.buy(size=size)
+        if not self.position:
+            if signal > 0.2:  # Lower threshold for more trades
+                self.buy(size=position_size)
                 self.trades.append(
                     {
-                        "date": self.data.datetime.date(),
-                        "price": self.data.close[0],
-                        "size": size,
+                        "date": self.data.datetime.date(0),
+                        "price": float(self.data.close[0]),
+                        "size": position_size,
                     }
                 )
-                self.log(f"BUY: Price={self.data.close[0]:.2f}, Size={size}")
-            elif total_signal < -0.5:  # Strong sell signal
-                self.sell(size=size)
+            elif signal < -0.2:  # Lower threshold for more trades
+                self.sell(size=position_size)
                 self.trades.append(
                     {
-                        "date": self.data.datetime.date(),
-                        "price": self.data.close[0],
-                        "size": -size,
+                        "date": self.data.datetime.date(0),
+                        "price": float(self.data.close[0]),
+                        "size": -position_size,
                     }
                 )
-                self.log(f"SELL: Price={self.data.close[0]:.2f}, Size={size}")
-        else:  # Have position
-            if self.position.size > 0:  # Long position
-                if total_signal < -0.2:  # Exit long
-                    self.close()
-                    self.trades.append(
-                        {
-                            "date": self.data.datetime.date(),
-                            "price": self.data.close[0],
-                            "size": -self.position.size,
-                        }
-                    )
-                    self.log(f"CLOSE LONG: Price={self.data.close[0]:.2f}")
-            else:  # Short position
-                if total_signal > 0.2:  # Exit short
-                    self.close()
-                    self.trades.append(
-                        {
-                            "date": self.data.datetime.date(),
-                            "price": self.data.close[0],
-                            "size": -self.position.size,
-                        }
-                    )
-                    self.log(f"CLOSE SHORT: Price={self.data.close[0]:.2f}")
+        else:
+            if (self.position.size > 0 and signal < -0.2) or (
+                self.position.size < 0 and signal > 0.2
+            ):
+                self.close()
+                self.trades.append(
+                    {
+                        "date": self.data.datetime.date(0),
+                        "price": float(self.data.close[0]),
+                        "size": 0,
+                    }
+                )
 
-        # Track equity curve
-        self.equity_curve.append(self.broker.getvalue())
+        self.equity_curve.append(
+            float(self.broker.getvalue())
+        )  # Convert to float explicitly
 
-        # Print status every month (approximately)
-        if len(self.data) % 20 == 0:  # Every ~20 trading days
-            self.log(
-                f"\nStatus at {self.data.datetime.date()}:\n"
-                f"Portfolio Value: {self.broker.getvalue():.2f}\n"
-                f"MACD Histogram: {self.macd.macd[0] - self.macd.signal[0]:.4f}\n"
-                f"RSI: {self.rsi[0]:.2f}\n"
-                f"Stochastic K%: {self.stoch.percK[0]:.2f}\n"
-                f"BB Position: {(self.data.close[0] - self.bb.mid[0]) / (self.bb.top[0] - self.bb.mid[0]):.2f}"  # noqa: E501
-            )
-
-    def log(self, txt, dt=None):
-        """Logging function."""
-        dt = dt or self.data.datetime.date()
+    def log(self, txt: str, dt: Any | None = None) -> None:
+        """Log message with optional datetime."""
+        dt = dt or self.data.datetime.date(0)
         print(f"{dt}: {txt}")

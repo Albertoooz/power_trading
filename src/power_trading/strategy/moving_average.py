@@ -1,23 +1,29 @@
+from typing import Any
+
 import backtrader as bt
 
 
 class MovingAverageStrategy(bt.Strategy):
-    params = (
-        ("fast_period", 20),
-        ("slow_period", 50),
+    """Simple moving average crossover strategy."""
+
+    params = dict(
+        fast_period=10,
+        slow_period=30,
     )
 
-    def __init__(self):
+    def __init__(self) -> None:
+        """Initialize strategy parameters."""
         self.fast_ma = bt.indicators.SMA(self.data.close, period=self.p.fast_period)
         self.slow_ma = bt.indicators.SMA(self.data.close, period=self.p.slow_period)
         self.crossover = bt.indicators.CrossOver(self.fast_ma, self.slow_ma)
-        self.equity_curve = []
-        self.trades = []
+        self.trades: list[dict[str, Any]] = []
+        self.equity_curve: list[float] = []
 
-    def next(self):
+    def next(self) -> None:
+        """Execute trading logic."""
         self.equity_curve.append(self.broker.getvalue())
         if not self.position:
-            if self.crossover > 0:
+            if self.crossover > 0:  # Fast MA crosses above slow MA
                 self.buy()
                 self.trades.append(
                     {
@@ -26,7 +32,7 @@ class MovingAverageStrategy(bt.Strategy):
                         "size": 1,
                     }
                 )
-        elif self.crossover < 0:
+        elif self.crossover < 0:  # Fast MA crosses below slow MA
             self.close()
             self.trades.append(
                 {
