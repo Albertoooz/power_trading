@@ -3,7 +3,7 @@ import argparse
 from power_trading.backtest import run_backtest
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--strategy",

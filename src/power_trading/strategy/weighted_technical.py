@@ -47,13 +47,13 @@ class WeightedTechnicalStrategy(bt.Strategy):
         self.equity_curve: list[float] = []
 
     def get_rsi_signal(self) -> float:
-        """Get RSI signal (-1 to 1)."""
+        """Get RSI signal."""
         rsi_value = float(self.rsi[0])
-        if rsi_value < self.p.rsi_lower:
-            return 1.0
-        elif rsi_value > self.p.rsi_upper:
-            return -1.0
-        return 0.0
+        if rsi_value > 70:
+            return -1.0  # Overbought -> Sell signal
+        elif rsi_value < 30:
+            return 1.0  # Oversold -> Buy signal
+        return 0.0  # No signal
 
     def get_macd_signal(self) -> float:
         """Get MACD signal (-1 to 1)."""

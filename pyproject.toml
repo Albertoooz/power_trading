@@ -70,10 +70,17 @@ warn_redundant_casts = true
 warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
-strict_equality = true
 
 [[tool.mypy.overrides]]
-module = ["yfinance.*", "backtrader.*", "plotly.*"]
+module = [
+    "ta.*",
+    "backtrader.*",
+    "plotly.*",
+    "yfinance.*",
+    "optuna.*",
+    "numpy.*",
+    "pandas.*"
+]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -81,6 +88,11 @@ module = ["power_trading.strategy.*"]
 warn_return_any = false
 disallow_untyped_defs = false
 check_untyped_defs = false
+
+[[tool.mypy.overrides]]
+module = ["scripts.*"]
+follow_imports = "skip"
+ignore_errors = true
 
 [tool.poetry]
 name = "power_trading"

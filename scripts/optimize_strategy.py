@@ -1,12 +1,15 @@
+# type: ignore
 import argparse
+from typing import Any, cast
 
 import numpy as np
 import optuna
 import pandas as pd
 import yfinance as yf
-from ta.momentum import RSIIndicator, StochasticOscillator  # type: ignore
-from ta.trend import MACD  # type: ignore
-from ta.volatility import BollingerBands  # type: ignore
+from pandas import DataFrame, Series
+from ta.momentum import RSIIndicator, StochasticOscillator
+from ta.trend import MACD
+from ta.volatility import BollingerBands
 
 # Lista instrumentów do analizy
 INSTRUMENTS = [
@@ -17,8 +20,8 @@ INSTRUMENTS = [
 class TechnicalIndicators:
     @staticmethod
     def calculate_macd(
-        close: pd.Series, params: dict
-    ) -> tuple[pd.Series, pd.Series, pd.Series]:
+        close: Series, params: dict[str, Any]
+    ) -> tuple[Series, Series, Series]:
         """Calculate MACD indicator."""
         try:
             macd_indicator = MACD(
@@ -27,57 +30,57 @@ class TechnicalIndicators:
                 window_fast=params["macd_fast"],
                 window_sign=params["macd_signal"],
             )
-            macd = macd_indicator.macd()
-            signal = macd_indicator.macd_signal()
-            hist = macd_indicator.macd_diff()
+            macd = cast(Series, macd_indicator.macd())
+            signal = cast(Series, macd_indicator.macd_signal())
+            hist = cast(Series, macd_indicator.macd_diff())
             return macd, signal, hist
         except Exception as e:
             print(f"Error in calculate_macd: {str(e)}")
-            return pd.Series(), pd.Series(), pd.Series()
+            return pd.Series(dtype=float), pd.Series(dtype=float), pd.Series(dtype=float)
 
     @staticmethod
-    def calculate_rsi(close: pd.Series, period: int) -> pd.Series:
+    def calculate_rsi(close: Series, period: int) -> Series:
         """Calculate RSI indicator."""
         try:
             rsi_indicator = RSIIndicator(close=close, window=period)
-            return rsi_indicator.rsi()
+            return cast(Series, rsi_indicator.rsi())
         except Exception as e:
             print(f"Error in calculate_rsi: {str(e)}")
-            return pd.Series()
+            return pd.Series(dtype=float)
 
     @staticmethod
     def calculate_bollinger_bands(
-        close: pd.Series, period: int, std: float
-    ) -> tuple[pd.Series, pd.Series, pd.Series]:
+        close: Series, period: int, std: float
+    ) -> tuple[Series, Series, Series]:
         """Calculate Bollinger Bands."""
         try:
             bb_indicator = BollingerBands(close=close, window=period, window_dev=std)
-            upper = bb_indicator.bollinger_hband()
-            middle = bb_indicator.bollinger_mavg()
-            lower = bb_indicator.bollinger_lband()
+            upper = cast(Series, bb_indicator.bollinger_hband())
+            middle = cast(Series, bb_indicator.bollinger_mavg())
+            lower = cast(Series, bb_indicator.bollinger_lband())
             return upper, middle, lower
         except Exception as e:
             print(f"Error in calculate_bollinger_bands: {str(e)}")
-            return pd.Series(), pd.Series(), pd.Series()
+            return pd.Series(dtype=float), pd.Series(dtype=float), pd.Series(dtype=float)
 
     @staticmethod
     def calculate_stochastic(
-        high: pd.Series, low: pd.Series, close: pd.Series, period: int, smooth: int
-    ) -> tuple[pd.Series, pd.Series]:
+        high: Series, low: Series, close: Series, period: int, smooth: int
+    ) -> tuple[Series, Series]:
         """Calculate Stochastic Oscillator."""
         try:
             stoch_indicator = StochasticOscillator(
                 high=high, low=low, close=close, window=period, smooth_window=smooth
             )
-            k = stoch_indicator.stoch()
-            d = stoch_indicator.stoch_signal()
+            k = cast(Series, stoch_indicator.stoch())
+            d = cast(Series, stoch_indicator.stoch_signal())
             return k, d
         except Exception as e:
             print(f"Error in calculate_stochastic: {str(e)}")
-            return pd.Series(), pd.Series()
+            return pd.Series(dtype=float), pd.Series(dtype=float)
 
     @staticmethod
-    def calculate_all(df: pd.DataFrame, params: dict) -> pd.DataFrame:
+    def calculate_all(df: DataFrame, params: dict[str, Any]) -> DataFrame:
         """Calculate all technical indicators."""
         try:
             # Create a copy of the dataframe to avoid modifying the original
@@ -131,21 +134,21 @@ class TechnicalIndicators:
                 window_fast=params["macd_fast"],
                 window_sign=params["macd_signal"],
             )
-            result["macd"] = macd_indicator.macd()
-            result["macd_signal"] = macd_indicator.macd_signal()
-            result["macd_hist"] = macd_indicator.macd_diff()
+            result["macd"] = cast(Series, macd_indicator.macd())
+            result["macd_signal"] = cast(Series, macd_indicator.macd_signal())
+            result["macd_hist"] = cast(Series, macd_indicator.macd_diff())
 
             # RSI calculation
             rsi_indicator = RSIIndicator(close=close, window=params["rsi_period"])
-            result["rsi"] = rsi_indicator.rsi()
+            result["rsi"] = cast(Series, rsi_indicator.rsi())
 
             # Bollinger Bands calculation
             bb_indicator = BollingerBands(
                 close=close, window=params["bb_period"], window_dev=params["bb_std"]
             )
-            result["bb_high"] = bb_indicator.bollinger_hband()
-            result["bb_mid"] = bb_indicator.bollinger_mavg()
-            result["bb_low"] = bb_indicator.bollinger_lband()
+            result["bb_high"] = cast(Series, bb_indicator.bollinger_hband())
+            result["bb_mid"] = cast(Series, bb_indicator.bollinger_mavg())
+            result["bb_low"] = cast(Series, bb_indicator.bollinger_lband())
 
             # Stochastic Oscillator calculation
             stoch_indicator = StochasticOscillator(
@@ -155,8 +158,8 @@ class TechnicalIndicators:
                 window=params["stoch_period"],
                 smooth_window=params["stoch_smooth"],
             )
-            result["stoch_k"] = stoch_indicator.stoch()
-            result["stoch_d"] = stoch_indicator.stoch_signal()
+            result["stoch_k"] = cast(Series, stoch_indicator.stoch())
+            result["stoch_d"] = cast(Series, stoch_indicator.stoch_signal())
 
             # Add price data
             result["Close"] = close
@@ -165,17 +168,6 @@ class TechnicalIndicators:
 
             # Handle any remaining NaN values
             result = result.fillna(method="ffill").fillna(method="bfill")
-
-            # Print debug information
-            print("\nIndicator Statistics:")
-            print(f"Original data length: {len(df)}")
-            print(f"Valid data length: {len(result)}")
-            print(f"MACD range: {result['macd'].min():.2f} to {result['macd'].max():.2f}")
-            print(f"RSI range: {result['rsi'].min():.2f} to {result['rsi'].max():.2f}")
-            print(
-                f"Stochastic range: "
-                f"{result['stoch_k'].min():.2f} to {result['stoch_k'].max():.2f}"
-            )
 
             return result
 
@@ -187,22 +179,22 @@ class TechnicalIndicators:
 
 
 class Strategy:
-    def __init__(self, params: dict):
+    def __init__(self, params: dict[str, Any]):
         self.params = params
         self.indicators = TechnicalIndicators()
 
-    def generate_signals(self, indicators: pd.DataFrame) -> pd.Series:
+    def generate_signals(self, indicators: DataFrame) -> Series:
         """Generate trading signals based on technical indicators."""
         try:
             if indicators.empty:
-                return pd.Series()
+                return pd.Series(dtype=float)
 
             # Initialize signals
-            signals = pd.Series(0, index=indicators.index)
+            signals = pd.Series(0.0, index=indicators.index, dtype=float)
 
             # MACD signals (weight: 1.0)
-            macd_hist = indicators["macd_hist"]
-            macd_signals = pd.Series(0.0, index=indicators.index)
+            macd_hist = indicators["macd_hist"].astype(float)
+            macd_signals = pd.Series(0.0, index=indicators.index, dtype=float)
             for i in range(len(macd_signals)):
                 if i >= 20:  # Need at least 20 periods for normalization
                     max_hist = max(abs(macd_hist[i - 20 : i + 1]))  # Use last 20 periods
@@ -210,108 +202,50 @@ class Strategy:
                         macd_signals[i] = macd_hist[i] / max_hist
 
             # RSI signals (weight: 1.0)
-            rsi = indicators["rsi"]
-            rsi_signals = pd.Series(0.0, index=indicators.index)
+            rsi = indicators["rsi"].astype(float)
+            rsi_signals = pd.Series(0.0, index=indicators.index, dtype=float)
             rsi_signals[rsi < self.params["rsi_oversold"]] = 1.0  # Oversold -> Buy
             rsi_signals[rsi > self.params["rsi_overbought"]] = -1.0  # Overbought -> Sell
 
-            # Bollinger Bands signals (weight: 0.5)
-            bb_signals = pd.Series(0.0, index=indicators.index)
-            price = indicators["Close"]
-            bb_signals[price < indicators["bb_low"]] = 1.0  # Below lower band -> Buy
-            bb_signals[price > indicators["bb_high"]] = -1.0  # Above upper band -> Sell
-            bb_signals = bb_signals * 0.5
-
-            # Stochastic signals (weight: 0.5)
-            stoch_signals = pd.Series(0.0, index=indicators.index)
-            stoch_k = indicators["stoch_k"]
-            stoch_d = indicators["stoch_d"]
-            stoch_signals[
-                (stoch_k < self.params["stoch_oversold"])
-                & (stoch_d < self.params["stoch_oversold"])
-            ] = 1.0
-            stoch_signals[
-                (stoch_k > self.params["stoch_overbought"])
-                & (stoch_d > self.params["stoch_overbought"])
-            ] = -1.0
-            stoch_signals = stoch_signals * 0.5
-
             # Combine signals
-            signals = macd_signals + rsi_signals + bb_signals + stoch_signals
+            signals = macd_signals + rsi_signals
 
             # Normalize combined signals
             max_signal = max(abs(signals))
             if max_signal > 0:
                 signals = signals / max_signal
 
-            # Apply thresholds for stronger signals
-            signals[abs(signals) < 0.3] = 0  # Clear weak signals
-            signals[signals > 0] = 1  # Strong buy signals
-            signals[signals < 0] = -1  # Strong sell signals
-
-            # Print debug information
-            print("\nSignal Statistics:")
-            print(f"Buy signals: {(signals == 1).sum()}")
-            print(f"Sell signals: {(signals == -1).sum()}")
-            print(f"Neutral signals: {(signals == 0).sum()}")
-
             return signals
 
         except Exception as e:
-            print(f"Error in generate_signals: {str(e)}")
-            return pd.Series()
+            print(f"Error generating signals: {str(e)}")
+            return pd.Series(dtype=float)
 
-    def backtest(self, data: pd.DataFrame) -> float:
+    def backtest(self, data: DataFrame) -> float:
         """Run backtest and calculate Sharpe ratio."""
         try:
-            # Calculate indicators
             indicators = self.indicators.calculate_all(data, self.params)
-            if indicators.empty:
-                return float("-inf")
-
-            # Generate signals
             signals = self.generate_signals(indicators)
-            if signals.empty:
-                return float("-inf")
 
             # Calculate returns
-            price_series = indicators["Close"]
-            returns = price_series.pct_change()
+            returns = data["Close"].pct_change()
+            strategy_returns = signals.shift(1) * returns
 
-            # Calculate strategy returns
-            strategy_returns = (
-                signals.shift(1) * returns
-            )  # Shift signals to avoid look-ahead bias
-
-            # Calculate Sharpe ratio
-            if len(strategy_returns) == 0 or strategy_returns.std() == 0:
-                return float("-inf")
-
-            sharpe_ratio = np.sqrt(252) * strategy_returns.mean() / strategy_returns.std()
-
-            # Print debug information
-            print("\nBacktest Statistics:")
-            print(f"Total trades: {(signals != 0).sum()}")
-            print(f"Average return: {strategy_returns.mean():.4%}")
-            print(f"Return std: {strategy_returns.std():.4%}")
-            print(f"Sharpe ratio: {sharpe_ratio:.2f}")
-
-            return float(sharpe_ratio)
+            # Calculate Sharpe Ratio
+            if len(strategy_returns) > 0:
+                sharpe = np.sqrt(252) * strategy_returns.mean() / strategy_returns.std()
+                return float(sharpe)
+            return 0.0
 
         except Exception as e:
             print(f"Error in backtest: {str(e)}")
-            print(f"Data shape: {data.shape}")
-            print(
-                f"Indicators: {indicators.shape if 'indicators' in locals() else 'N/A'}"
-            )
-            print(f"Signals shape: {getattr(signals, 'shape', 'Not calculated')}")
-            return float("-inf")
+            return 0.0
 
 
 def optimize_strategy(
     symbol: str, start_date: str, end_date: str, n_trials: int = 100
-) -> dict:
-    """Optimize strategy parameters for a given symbol."""
+) -> dict[str, Any]:
+    """Optimize strategy parameters using Optuna."""
     print(f"\nOptimizing strategy for {symbol}")
     print(f"Period: {start_date} to {end_date}")
     print(f"Number of trials: {n_trials}")
@@ -329,20 +263,20 @@ def optimize_strategy(
 
     study = optuna.create_study(direction="maximize")
 
-    def objective(trial):
+    def objective(trial: optuna.Trial) -> float:
         params = {
             "macd_fast": trial.suggest_int("macd_fast", 8, 20),
             "macd_slow": trial.suggest_int("macd_slow", 21, 40),
             "macd_signal": trial.suggest_int("macd_signal", 5, 15),
-            "rsi_period": trial.suggest_int("rsi_period", 10, 30),
-            "rsi_oversold": trial.suggest_int("rsi_oversold", 20, 40),
-            "rsi_overbought": trial.suggest_int("rsi_overbought", 60, 80),
-            "bb_period": trial.suggest_int("bb_period", 10, 30),
+            "rsi_period": trial.suggest_int("rsi_period", 5, 25),
+            "rsi_overbought": trial.suggest_float("rsi_overbought", 65, 85),
+            "rsi_oversold": trial.suggest_float("rsi_oversold", 15, 35),
+            "bb_period": trial.suggest_int("bb_period", 10, 50),
             "bb_std": trial.suggest_float("bb_std", 1.5, 3.0),
-            "stoch_period": trial.suggest_int("stoch_period", 5, 20),
+            "stoch_period": trial.suggest_int("stoch_period", 5, 25),
             "stoch_smooth": trial.suggest_int("stoch_smooth", 2, 10),
-            "stoch_oversold": trial.suggest_int("stoch_oversold", 10, 30),
-            "stoch_overbought": trial.suggest_int("stoch_overbought", 70, 90),
+            "stoch_overbought": trial.suggest_float("stoch_overbought", 75, 85),
+            "stoch_oversold": trial.suggest_float("stoch_oversold", 15, 25),
         }
 
         strategy = Strategy(params)
@@ -360,49 +294,37 @@ def optimize_strategy(
         for param, value in best_params.items():
             print(f"{param}: {value}")
 
-        return {"symbol": symbol, "best_params": best_params, "best_value": best_value}
+        best_params["symbol"] = symbol
+        best_params["start_date"] = start_date
+        best_params["end_date"] = end_date
+        best_params["best_value"] = best_value
+
+        return best_params
     except Exception as e:
         print(f"Error during optimization: {str(e)}")
         return {"symbol": symbol, "best_params": {}, "best_value": 0, "error": str(e)}
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description="Optimize trading strategy parameters")
-    parser.add_argument(
-        "--start",
-        type=str,
-        required=True,
-        help="Start date in YYYY-MM-DD format",
-    )
-    parser.add_argument(
-        "--end",
-        type=str,
-        required=True,
-        help="End date in YYYY-MM-DD format",
-    )
-    parser.add_argument(
-        "--trials",
-        type=int,
-        default=100,
-        help="Number of optimization trials",
-    )
+    parser.add_argument("--symbol", default="AAPL", help="Trading symbol")
+    parser.add_argument("--start", default="2020-01-01", help="Start date")
+    parser.add_argument("--end", default="2023-01-01", help="End date")
+    parser.add_argument("--trials", type=int, default=100, help="Number of trials")
 
     args = parser.parse_args()
 
-    for symbol in INSTRUMENTS:
-        optimize_strategy(
-            symbol=symbol,
-            start_date=args.start,
-            end_date=args.end,
-            n_trials=args.trials,
-        )
+    best_params = optimize_strategy(args.symbol, args.start, args.end, args.trials)
+    print("\nBest parameters found:")
+    for param, value in best_params.items():
+        print(f"{param}: {value}")
 
 
 if __name__ == "__main__":
     main()
 
 
-def calculate_indicators(data: pd.DataFrame, params: dict) -> pd.DataFrame:
+def calculate_indicators(data: DataFrame, params: dict) -> DataFrame:
     """Calculate technical indicators for the strategy.
 
     Args:

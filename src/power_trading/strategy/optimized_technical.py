@@ -56,33 +56,31 @@ class OptimizedTechnicalStrategy(bt.Strategy):
         self.equity_curve: list[float] = []
 
     def get_rsi_signal(self) -> float:
-        """Get RSI signal (-1 to 1)."""
-        rsi_value = float(self.rsi[0])  # Access RSI value directly
-        if rsi_value < self.p.rsi_lower:
-            return 1.0  # Oversold - buy signal
-        elif rsi_value > self.p.rsi_upper:
-            return -1.0  # Overbought - sell signal
-        return 0.0
+        """Get RSI signal."""
+        rsi_value = float(self.rsi[0])
+        if rsi_value > 70:
+            return -1.0  # Overbought -> Sell signal
+        elif rsi_value < 30:
+            return 1.0  # Oversold -> Buy signal
+        return 0.0  # No signal
 
     def get_macd_signal(self) -> float:
-        """Get MACD signal (-1 to 1)."""
+        """Get MACD signal."""
         macd = float(self.macd.lines.macd[0])  # Access MACD line
         signal = float(self.macd.lines.signal[0])  # Access signal line
-        result: float = (
-            1.0 if macd > signal else -1.0
-        )  # Buy when MACD crosses above signal
-        return result
+        return 1.0 if macd > signal else -1.0  # Buy when MACD crosses above signal
 
     def get_bb_signal(self) -> float:
-        """Get Bollinger Bands signal (-1 to 1)."""
+        """Get Bollinger Bands signal."""
         price = float(self.data.close[0])
-        bottom = float(self.bb.lines.bot[0])  # Access bottom band
-        top = float(self.bb.lines.top[0])  # Access top band
-        if price < bottom:
-            return 1.0  # Price below lower band - buy signal
-        elif price > top:
-            return -1.0  # Price above upper band - sell signal
-        return 0.0
+        upper = float(self.bb.lines.top[0])
+        lower = float(self.bb.lines.bot[0])
+
+        if price > upper:
+            return -1.0  # Price above upper band -> Sell signal
+        elif price < lower:
+            return 1.0  # Price below lower band -> Buy signal
+        return 0.0  # No signal
 
     def get_weighted_signal(self) -> float:
         """Calculate weighted signal from all indicators."""
