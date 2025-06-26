@@ -15,8 +15,8 @@ readme = { file = "README.md", content-type = "text/markdown" }
 
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [dependency-groups]
 dev = [
@@ -61,23 +61,27 @@ docstring-code-format = true
 files = ["src", "tests"]
 strict = true
 
+[tool.poetry]
+name = "power_trading"
+version = "0.1.0"
+description = "A trading strategy optimization framework"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+
 [tool.poetry.dependencies]
-plotly = "^5.18.0"
-backtrader = "^1.9.76.123"
-pandas = "^2.3.0"
-numpy = "^2.3.0"
-matplotlib = "^3.10.3"
-scikit-learn = "^1.7.0"
-yfinance = "^0.2.63"
+python = ">=3.13,<4.0"
+pandas = "^2.0.0"
+numpy = "^1.24.0"
+optuna = "^3.0.0"
+ta = "^0.10.0"
+yfinance = "^0.2.0"
+backtrader = "^1.9.78"
+plotly = "^5.0.0"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^8.4.0"
-pytest-cov = "^6.0.0"
-ruff = "^0.4.7"
-mypy = "^1.16.0"
-bandit = "^1.8.3"
-docformatter = "^1.7.5"
-pre-commit = "^4.2.0"
+pytest = "^7.0.0"
+black = "^23.0.0"
+flake8 = "^6.0.0"
 
 [tool.hatch.build.targets.wheel]
 packages = ["power_trading"]
