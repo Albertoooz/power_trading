@@ -29,9 +29,17 @@ jobs:
       run: |
         poetry run pre-commit run --all-files
 
-    - name: Run tests
+    - name: Run tests with coverage
       run: |
         poetry run pytest
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: ./coverage.xml
+        flags: unittests
+        fail_ci_if_error: true
 
     - name: Run type checking
       run: |
