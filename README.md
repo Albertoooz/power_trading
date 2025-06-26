@@ -92,17 +92,17 @@ MIT License
 
 ## Table of Contents
 
-- [Prerequisites](#prerequisites)  
-- [Testing](#testing)  
-- [Docker](#docker)  
+- [Prerequisites](#prerequisites)
+- [Testing](#testing)
+- [Docker](#docker)
 
 ---
 
 ## Prerequisites
 
-- [Python](https://www.python.org/downloads/) **>=3.12, <4.0**  
-- [Poetry](https://python-poetry.org/docs/#installation) **for dependency management**  
-- [pre-commit](https://pre-commit.com/#install) **for git hooks**  
+- [Python](https://www.python.org/downloads/) **>=3.12, <4.0**
+- [Poetry](https://python-poetry.org/docs/#installation) **for dependency management**
+- [pre-commit](https://pre-commit.com/#install) **for git hooks**
 - [docker](https://docs.docker.com/get-docker/) _(optional)_
 
 ---

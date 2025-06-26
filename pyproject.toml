@@ -82,6 +82,10 @@ plotly = "^5.0.0"
 pytest = "^7.0.0"
 black = "^23.0.0"
 flake8 = "^6.0.0"
+pre-commit = "^3.6.0"
+mypy = "^1.9.0"
+pandas-stubs = "^2.2.1"
+types-requests = "^2.31.0"
 
 [tool.hatch.build.targets.wheel]
 packages = ["power_trading"]

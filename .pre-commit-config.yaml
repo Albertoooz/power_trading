@@ -4,17 +4,11 @@ default_language_version:
 repos:
   # Ruff: lint + format
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: "v0.4.7"
+    rev: v0.3.4
     hooks:
       - id: ruff
         args: [--fix]
       - id: ruff-format
-
-  # mypy: type checking
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.15.0
-    hooks:
-      - id: mypy
 
   # docformatter: docstrings
   - repo: https://github.com/pycqa/docformatter
@@ -41,3 +35,17 @@ repos:
         types: [python]
         pass_filenames: false
 
+  # pre-commit-hooks: additional checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+      - id: check-toml
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.9.0
+    hooks:
+      - id: mypy
