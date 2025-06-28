@@ -1,0 +1,20 @@
+Optimization completed at: 2025-06-28 12:08:03.612418
+
+Best fitness achieved: 1.2194226573371032
+
+Best parameters:
+sma_period: 89.1944711914718
+momentum_period: 180
+atr_period: 39.10230877932938
+atr_multiplier: 3.472096631529508
+bb_period: 36.36198312425637
+bb_dev: 2.039214805969485
+pyramid_pct: 0.01218584629048406
+profit_target_pct: 0.47919124171744093
+position_size: 0.9758943095412863
+max_pyramids: 5
+
+Generation summary:
+Total generations: 50
+Initial best fitness: 0.7239847108632325
+Final best fitness: 0.9705512660042894

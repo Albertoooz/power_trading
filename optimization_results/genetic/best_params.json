@@ -1,0 +1,15 @@
+{
+  "best_params": {
+    "sma_period": 89.1944711914718,
+    "momentum_period": 180,
+    "atr_period": 39.10230877932938,
+    "atr_multiplier": 3.472096631529508,
+    "bb_period": 36.36198312425637,
+    "bb_dev": 2.039214805969485,
+    "pyramid_pct": 0.01218584629048406,
+    "profit_target_pct": 0.47919124171744093,
+    "position_size": 0.9758943095412863,
+    "max_pyramids": 5
+  },
+  "best_fitness": 1.2194226573371032
+}

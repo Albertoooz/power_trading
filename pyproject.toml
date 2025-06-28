@@ -110,6 +110,7 @@ ta = "^0.10.0"
 yfinance = "^0.2.0"
 backtrader = "^1.9.78"
 plotly = "^5.0.0"
+deap = "^1.4.3"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.0.0"

@@ -39,6 +39,41 @@ class PlotlyVisualizer:
         Returns:
             Plotly Figure object
         """
+        # Calculate monthly returns for heatmap
+        daily_returns = equity_curve.pct_change()
+        monthly_returns = pd.DataFrame(index=equity_curve.index)
+        monthly_returns["Year"] = monthly_returns.index.year
+        monthly_returns["Month"] = monthly_returns.index.month
+        monthly_returns["Returns"] = daily_returns
+
+        # Calculate cumulative returns for each month
+        monthly_returns = (
+            monthly_returns.groupby(["Year", "Month"])["Returns"]
+            .apply(lambda x: (1 + x).prod() - 1)
+            .reset_index()
+        )
+
+        # Pivot the data for heatmap
+        heatmap_data = monthly_returns.pivot(
+            index="Year", columns="Month", values="Returns"
+        )
+
+        # Create month labels
+        month_labels = [
+            "Jan",
+            "Feb",
+            "Mar",
+            "Apr",
+            "May",
+            "Jun",
+            "Jul",
+            "Aug",
+            "Sep",
+            "Oct",
+            "Nov",
+            "Dec",
+        ]
+
         # Prepare trade points
         buys = []
         sells = []
@@ -48,12 +83,14 @@ class PlotlyVisualizer:
             else:
                 sells.append((trade["date"], trade["price"]))
 
+        # Create figure with subplots including heatmap
         fig = make_subplots(
-            rows=3,
+            rows=4,
             cols=1,
             shared_xaxes=True,
-            row_heights=[0.5, 0.3, 0.2],
+            row_heights=[0.4, 0.2, 0.15, 0.25],  # Adjusted heights to include heatmap
             vertical_spacing=0.02,
+            subplot_titles=("Price Action", "Equity Curve", "Volume", "Monthly Returns"),
         )
 
         # Plot candlestick chart
@@ -134,17 +171,63 @@ class PlotlyVisualizer:
             col=1,
         )
 
+        # Add monthly returns heatmap
+        fig.add_trace(
+            go.Heatmap(
+                z=heatmap_data.values * 100,  # Convert to percentage
+                x=month_labels,
+                y=heatmap_data.index,
+                colorscale=[
+                    [0, "red"],  # Negative returns
+                    [0.5, "white"],  # Zero
+                    [1, "green"],  # Positive returns
+                ],
+                zmid=0,  # Center the color scale at zero
+                text=np.round(heatmap_data.values * 100, 1),
+                texttemplate="%{text}%",
+                textfont={"size": 10},
+                hoverongaps=False,
+                showscale=True,
+                name="Monthly Returns",
+                colorbar=dict(
+                    len=0.25,  # Length of colorbar relative to the plot height
+                    yanchor="bottom",  # Anchor point for y position
+                    y=0,  # Position at the bottom of the plot
+                    title="Returns %",
+                    titleside="right",
+                    thickness=20,  # Width of the colorbar
+                ),
+            ),
+            row=4,
+            col=1,
+        )
+
         # Update layout
         fig.update_layout(
             title=f'{strategy_params.get("ticker")} Backtest Results',
-            height=900,
+            height=1200,  # Increased height to accommodate heatmap
             xaxis_rangeslider_visible=False,
             hovermode="x unified",
         )
 
+        # Update axes labels
         fig.update_yaxes(title_text="Price", row=1, col=1)
         fig.update_yaxes(title_text="Equity", row=2, col=1)
         fig.update_yaxes(title_text="Volume", row=3, col=1)
+        fig.update_yaxes(title_text="Year", row=4, col=1)
+        fig.update_xaxes(title_text="Month", row=4, col=1)
+
+        # Update heatmap specific layout
+        fig.update_layout(
+            {
+                f"xaxis{4}": {
+                    "tickmode": "array",
+                    "ticktext": month_labels,
+                    "tickvals": list(range(12)),
+                },
+                f"yaxis{4}": {"autorange": "reversed"},  # Most recent year at top
+            }
+        )
 
         return fig
 
@@ -424,7 +507,7 @@ def run_backtest(params: dict[str, Any]) -> tuple[dict[str, float | int], go.Fig
         else:
             print(f"{k}: {v}")
 
-    fig = PlotlyVisualizer.plot_backtest(strategy, params, df, equity_curve)
-    fig.show()
+    main_fig = PlotlyVisualizer.plot_backtest(strategy, params, df, equity_curve)
+    main_fig.show()
 
-    return stats, fig
+    return stats, main_fig

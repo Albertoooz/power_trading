@@ -13,6 +13,7 @@ def main() -> None:
             "optimized_technical",
             "momentum_gtaa",
             "residual_momentum",
+            "optimized_residual_momentum",
         ],
         required=True,
     )
